@@ -2,7 +2,7 @@
 /*
  * Plugin Name: AI Review Auto-Reply for WooCommerce
  * Description: Automatically replies to WooCommerce product reviews using AI, trained from product data & your previous reply tone.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Pigment.Dev
  * Author URI: https://pigment.dev/
  * Plugin URI: https://pigment.dev/
@@ -20,13 +20,13 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * @Credit: AmirhpCom, PigmentDev, Written with help of ChatGPT-5 for fun purposes
  * @Last modified by: amirhp-com <its@amirhp.com>
- * @Last modified time: 2025/09/12 10:50:56
+ * @Last modified time: 2025/09/12 12:14:23
 */
 defined("ABSPATH") or die("<h2>Unauthorized Access!</h2><hr><small>AI Review Auto-Reply for WooCommerce :: Developed by <a href='https://pigment.dev'>Pigment.Dev</a></small>");
 
 if (!class_exists("PD_AI_Review_Reply")) {
 
-  final class PD_AI_Review_Reply {
+  class PD_AI_Review_Reply {
 
     /** @var string Option key for settings */
     private $option_key = "pd_ai_review_reply_options";
@@ -40,6 +40,13 @@ if (!class_exists("PD_AI_Review_Reply")) {
     public function __construct() {
       // Load settings on init
       add_action("init", array($this, "load_options"));
+
+      // add woocommerce hpos support
+      add_action("before_woocommerce_init", function() {
+        if (class_exists(\Automattic\WooCommerce\Utilities\FeaturesUtil::class)) {
+          \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+        }
+      });
 
       // Admin menu & settings
       add_action("admin_menu", array($this, "register_settings_page"));
@@ -61,19 +68,20 @@ if (!class_exists("PD_AI_Review_Reply")) {
      */
     public function load_options() {
       $defaults = array(
-        "enabled"       => "yes",            // Auto-reply toggle
-        "provider_url"  => "",               // AI endpoint (e.g., https://api.openai.com/v1/chat/completions)
-        "api_key"       => "",               // Secret API key
-        "api_key_header" => "Authorization",  // Header key
-        "api_key_value" => "Bearer %s",      // Header value format
-        "model"         => "gpt-4o-mini",    // Model name (free text)
-        "temperature"   => "0.3",
-        "max_tokens"    => "400",
-        "examples"      => 5,                // How many previous replies to learn tone from
-        "guidelines"    => "",               // Site-specific style/training text
-        "role_author_id" => 0,                // User ID to post replies as (0 => current admin_email identity)
-        "mock_mode"     => "no",             // If yes, generates a local template reply (no API call)
-        "delay_seconds" => 10,               // Delay for replying after approval
+        "debug"          => "no",              // enable debug
+        "enabled"        => "yes",             // Auto-reply toggle
+        "provider_url"   => "",                // AI endpoint (e.g., https://api.openai.com/v1/chat/completions)
+        "api_key"        => "",                // Secret API key
+        "api_key_header" => "Authorization",   // Header key
+        "api_key_value"  => "Bearer %s",       // Header value format
+        "model"          => "gpt-4o-mini",     // Model name (free text)
+        "temperature"    => "0.3",
+        "max_tokens"     => "400",
+        "examples"       => 5,                 // How many previous replies to learn tone from
+        "guidelines"     => "",                // Site-specific style/training text
+        "role_author_id" => 0,                 // User ID to post replies as (0 => current admin_email identity)
+        "mock_mode"      => "no",              // If yes, generates a local template reply (no API call)
+        "delay_seconds"  => 10,                // Delay for replying after approval
       );
       $this->opts = wp_parse_args((array) get_option($this->option_key, array()), $defaults);
     }
@@ -102,19 +110,20 @@ if (!class_exists("PD_AI_Review_Reply")) {
       add_settings_section("pd_ai_main", __("General", "pd-ai-review-reply"), "__return_false", $this->option_key);
 
       $fields = array(
-        "enabled"       => __("Enable auto-replies", "pd-ai-review-reply"),
-        "provider_url"  => __("Provider endpoint URL", "pd-ai-review-reply"),
-        "api_key"       => __("API key", "pd-ai-review-reply"),
+        "enabled"        => __("Enable auto-replies", "pd-ai-review-reply"),
+        "debug"          => __("Enable Debug", "pd-ai-review-reply"),
+        "provider_url"   => __("Provider endpoint URL", "pd-ai-review-reply"),
+        "api_key"        => __("API key", "pd-ai-review-reply"),
         "api_key_header" => __("API key header", "pd-ai-review-reply"),
-        "api_key_value" => __("API key header value (use %s placeholder)", "pd-ai-review-reply"),
-        "model"         => __("Model", "pd-ai-review-reply"),
-        "temperature"   => __("Temperature", "pd-ai-review-reply"),
-        "max_tokens"    => __("Max tokens", "pd-ai-review-reply"),
-        "examples"      => __("Previous replies to learn tone from", "pd-ai-review-reply"),
-        "guidelines"    => __("Guidelines / brand voice (optional)", "pd-ai-review-reply"),
+        "api_key_value"  => __("API key header value (use %s placeholder)", "pd-ai-review-reply"),
+        "model"          => __("Model", "pd-ai-review-reply"),
+        "temperature"    => __("Temperature", "pd-ai-review-reply"),
+        "max_tokens"     => __("Max tokens", "pd-ai-review-reply"),
+        "examples"       => __("Previous replies to learn tone from", "pd-ai-review-reply"),
+        "guidelines"     => __("Guidelines / brand voice (optional)", "pd-ai-review-reply"),
         "role_author_id" => __("Reply as User ID (0=auto)", "pd-ai-review-reply"),
-        "mock_mode"     => __("Mock mode (no API call)", "pd-ai-review-reply"),
-        "delay_seconds" => __("Reply delay (seconds)", "pd-ai-review-reply"),
+        "mock_mode"      => __("Mock mode (no API call)", "pd-ai-review-reply"),
+        "delay_seconds"  => __("Reply delay (seconds)", "pd-ai-review-reply"),
       );
 
       foreach ($fields as $key => $label) {
@@ -168,7 +177,11 @@ if (!class_exists("PD_AI_Review_Reply")) {
                 review: $("#pd_sample_review").val(),
                 _wpnonce: "<?php echo esc_js(wp_create_nonce("pd_ai_test")); ?>"
               }, function(resp) {
-                $("#pd_test_result").text(resp?.data?.reply || resp?.data || "No response");
+                console.log(resp);
+                $("#pd_test_result").html(
+                  "<strong>Generated Reply:</strong> "  + (resp?.data?.reply||"") +
+                  "<hr><strong>Sent Prompt:</strong> " + (resp?.data?.prompt||"")
+                );
               });
             });
           })(jQuery);
@@ -185,6 +198,12 @@ if (!class_exists("PD_AI_Review_Reply")) {
       $v = $this->opts["enabled"];
       ?>
       <label><input type="checkbox" name="<?php echo esc_attr($this->option_key); ?>[enabled]" value="yes" <?php checked($v, "yes"); ?>> <?php esc_html_e("Enable", "pd-ai-review-reply"); ?></label>
+      <?php
+    }
+    public function field_debug() {
+      $v = $this->opts["debug"];
+      ?>
+      <label><input type="checkbox" name="<?php echo esc_attr($this->option_key); ?>[debug]" value="yes" <?php checked($v, "yes"); ?>> <?php esc_html_e("Enable Debug responses", "pd-ai-review-reply"); ?></label>
       <?php
     }
     public function field_provider_url() {
@@ -258,25 +277,17 @@ if (!class_exists("PD_AI_Review_Reply")) {
       if ("yes" !== $this->opts["enabled"]) {
         return;
       }
-      if (empty($comment_ID)) {
-        return;
-      }
+      if (empty($comment_ID)) { return; }
 
       $comment = get_comment($comment_ID);
-      if (! $comment) {
-        return;
-      }
+      if (! $comment) { return; }
 
       // Only for product reviews
       $post_id = (int) $comment->comment_post_ID;
-      if ($post_id <= 0 || "product" !== get_post_type($post_id)) {
-        return;
-      }
+      if ($post_id <= 0 || "product" !== get_post_type($post_id)) { return; }
 
       // Only for top-level customer reviews (not replies)
-      if ((int) $comment->comment_parent !== 0) {
-        return;
-      }
+      if ((int) $comment->comment_parent !== 0) { return; }
 
       if (1 === (int) $comment_approved) {
         $this->dispatch_reply_now_or_later($comment_ID);
@@ -322,7 +333,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
         wp_schedule_single_event(time() + $delay, "pd_ai_reply_event", array((int) $comment_ID));
         add_action("pd_ai_reply_event", array($this, "generate_and_post_reply"), 10, 1);
       } else {
-        $this->generate_and_post_reply((int) $comment_ID);
+        @$this->generate_and_post_reply((int) $comment_ID);
       }
     }
 
@@ -335,7 +346,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
       }
       $comment_id = isset($_GET["comment_id"]) ? (int) $_GET["comment_id"] : 0;
       if ($comment_id > 0) {
-        $this->generate_and_post_reply($comment_id);
+        @$this->generate_and_post_reply($comment_id);
       }
       wp_safe_redirect(wp_get_referer() ? wp_get_referer() : admin_url("edit-comments.php"));
       exit;
@@ -397,9 +408,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
      */
     public function ajax_test_prompt() {
       check_ajax_referer("pd_ai_test");
-      if (! current_user_can("manage_woocommerce")) {
-        wp_send_json_error("forbidden");
-      }
+      if (! current_user_can("manage_woocommerce")) { wp_send_json_error("forbidden"); }
 
       $product_id = isset($_POST["product_id"]) ? (int) $_POST["product_id"] : 0;
       $review     = isset($_POST["review"]) ? wp_kses_post(wp_unslash($_POST["review"])) : "";
@@ -590,9 +599,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
       $url = trim($this->opts["provider_url"]);
       $key = trim($this->opts["api_key"]);
 
-      if (empty($url) || empty($key)) {
-        return "";
-      }
+      if (empty($url) || empty($key)) { return "EMPTY URL or API KEY"; }
 
       $headers = array(
         "Content-Type" => "application/json",
@@ -622,7 +629,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
       ));
 
       if (is_wp_error($res)) {
-        return "";
+        return "ERROR: " . $res->get_error_message();
       }
 
       $code = (int) wp_remote_retrieve_response_code($res);
@@ -641,11 +648,16 @@ if (!class_exists("PD_AI_Review_Reply")) {
         if (isset($json["output"])) {
           return trim((string) $json["output"]);
         }
+        return "ERROR: Unrecognized response structure" . $this->debug($json);
       }
-
-      return "";
+      else{
+        return "ERROR: HTTP " . $code . " - " . wp_remote_retrieve_response_message($res) . $this->debug(wp_remote_retrieve_body($res));
+      }
+      return "ERROR: Unrecognized response format";
     }
-
+    public function debug($var){
+      return "yes" === $this->opts["debug"] ? "<hr><pre style='text-align: left; direction: ltr; border:1px solid gray; padding: 1rem; overflow: auto;'>". print_r($var,1) ."</pre>" : "";
+    }
     /**
      * Simple local fallback generator (mock mode).
      *
@@ -653,7 +665,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
      * @return string
      */
     private function mock_generate($ctx) {
-      $name  = $ctx["customer"] ? $ctx["customer"] : __("dear customer", "pd-ai-review-reply");
+      $name  = $ctx["customer"] ? $ctx["customer"] : __("Dear customer", "pd-ai-review-reply");
       $title = $ctx["product"]["title"];
       $base  = "Thanks for sharing your feedback about {$title}. We truly appreciate it!";
       if (stripos($ctx["review"], "bad") !== false || stripos($ctx["review"], "poor") !== false) {
@@ -678,10 +690,6 @@ if (!class_exists("PD_AI_Review_Reply")) {
         if (stripos($text, $bad) !== false) {
           $text = str_ireplace($bad, "****", $text);
         }
-      }
-      // Append product link if concise enough
-      if ($product && strlen($text) < 280) {
-        $text .= " " . esc_url(get_permalink($product->get_id()));
       }
       return $text;
     }

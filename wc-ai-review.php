@@ -2,7 +2,7 @@
 /*
  * Plugin Name: AI Review Auto-Reply for WooCommerce
  * Description: Automatically replies to WooCommerce product reviews using AI, trained from product data & your previous reply tone.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: Pigment.Dev
  * Author URI: https://pigment.dev/
  * Plugin URI: https://pigment.dev/
@@ -20,7 +20,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * @Credit: AmirhpCom, PigmentDev, Written with help of ChatGPT-5 for fun purposes
  * @Last modified by: amirhp-com <its@amirhp.com>
- * @Last modified time: 2025/09/12 12:29:37
+ * @Last modified time: 2025/09/12 12:32:29
 */
 defined("ABSPATH") or die("<h2>Unauthorized Access!</h2><hr><small>AI Review Auto-Reply for WooCommerce :: Developed by <a href='https://pigment.dev'>Pigment.Dev</a></small>");
 
@@ -30,6 +30,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
 
     /** @var string Option key for settings */
     private $option_key = "pd_ai_review_reply_options";
+    private $debug = false;
 
     /** @var array Plugin settings cached */
     private $opts = array();
@@ -84,7 +85,7 @@ if (!class_exists("PD_AI_Review_Reply")) {
         "delay_seconds"  => 10,                // Delay for replying after approval
       );
       $this->opts = wp_parse_args((array) get_option($this->option_key, array()), $defaults);
-
+      $this->debug = "yes" === $this->opts["debug"];
       // manually create ai review if requested (admin only)
       if (current_user_can("manage_options") && is_admin() && isset($_GET["gen_ai_review"]) && !empty($_GET["gen_ai_review"])) {
         $gen_ai_review = sanitize_text_field(trim($_GET["gen_ai_review"]));
@@ -628,13 +629,9 @@ if (!class_exists("PD_AI_Review_Reply")) {
       $url = trim($this->opts["provider_url"]);
       $key = trim($this->opts["api_key"]);
 
-      if (empty($url) || empty($key)) {
-        return "EMPTY URL or API KEY";
-      }
+      if (empty($url) || empty($key)) return $this->debug ? "EMPTY URL or API KEY" : "";
 
-      $headers = array(
-        "Content-Type" => "application/json",
-      );
+      $headers = array( "Content-Type" => "application/json", );
 
       $api_header_key   = trim($this->opts["api_key_header"]);
       $api_header_value = sprintf($this->opts["api_key_value"], $key);
@@ -660,11 +657,11 @@ if (!class_exists("PD_AI_Review_Reply")) {
       ));
 
       if (is_wp_error($res)) {
-        return "ERROR: " . $res->get_error_message();
+        return $this->debug ? "ERROR: " . $res->get_error_message() : "";
       }
 
       $code = (int) wp_remote_retrieve_response_code($res);
-      $json = json_decode(wp_remote_retrieve_body($res), true);
+      $json = @json_decode(wp_remote_retrieve_body($res), true);
 
       // Try common schemas
       if (200 === $code && is_array($json)) {
@@ -679,14 +676,14 @@ if (!class_exists("PD_AI_Review_Reply")) {
         if (isset($json["output"])) {
           return trim((string) $json["output"]);
         }
-        return "ERROR: Unrecognized response structure" . $this->debug($json);
+        return $this->debug ? "ERROR: Unrecognized response structure" . $this->debug($json) : "";
       } else {
-        return "ERROR: HTTP " . $code . " - " . wp_remote_retrieve_response_message($res) . $this->debug(wp_remote_retrieve_body($res));
+        return $this->debug ? "ERROR: HTTP " . $code . " - " . wp_remote_retrieve_response_message($res) . $this->debug(wp_remote_retrieve_body($res)) : "";
       }
-      return "ERROR: Unrecognized response format";
+      return $this->debug ? "ERROR: Unrecognized response format" : "";
     }
     public function debug($var) {
-      return "yes" === $this->opts["debug"] ? "<hr><pre style='text-align: left; direction: ltr; border:1px solid gray; padding: 1rem; overflow: auto;'>" . print_r($var, 1) . "</pre>" : "";
+      return $this->debug ? "<hr><pre style='text-align: left; direction: ltr; border:1px solid gray; padding: 1rem; overflow: auto;'>" . print_r($var, 1) . "</pre>" : "";
     }
     /**
      * Simple local fallback generator (mock mode).

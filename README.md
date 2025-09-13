@@ -19,6 +19,15 @@ The plugin learns from your product descriptions, details, and previous replies 
 
 ---
 
+
+## ⬇️ Download
+
+You can download the latest zipped release from the [GitHub Releases page](https://github.com/pigment-dev/wc-ai-review/releases/latest).
+
+**This plugin is completely free, open source, and ad-free.**
+
+---
+
 ## 🔧 Installation
 
 1. Download or clone this repository into your WordPress `wp-content/plugins` directory:
@@ -67,21 +76,18 @@ From the **Admin → AI Review Reply** page:
 
 ---
 
-## 🛠 Development Notes
-
-- Written in **PHP OOP style**, following WordPress coding standards.
-- Uses **wp_remote_post()** for AI API calls.
-- Compatible with **WooCommerce product review system**.
-- Supports **WordPress Cron** for delayed posting.
-
----
-
 ## ⚠️ Disclaimer
 
 This plugin connects to an external AI provider of your choice.
 - Ensure compliance with provider’s terms of service.
 - Replies are **automatically generated** — always review critical comments manually.
 - Use **Mock mode** if you don’t want to send external requests during testing.
+
+---
+
+## 🛡️ Warranty Disclaimer
+
+This plugin is provided **"as is"** without any warranty of any kind, either expressed or implied. The authors and contributors are not liable for any damages or issues arising from the use of this plugin. Use at your own risk.
 
 ---
 

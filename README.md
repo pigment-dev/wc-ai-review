@@ -57,6 +57,50 @@ In the **Admin → AI Review Reply** settings you can configure:
 
 ---
 
+## 🌐 Supported AI Providers & Models
+
+Your plugin can connect to any AI provider with an OpenAI-compatible API.
+Here are some popular options:
+
+| Provider      | Example Models                              | Endpoint Example |
+|---------------|---------------------------------------------|------------------|
+| **OpenAI**    | GPT-4o, GPT-4o-mini, GPT-3.5 Turbo          | `https://api.openai.com/v1/chat/completions` |
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Haiku           | `https://api.anthropic.com/v1/messages` |
+| **Google**    | Gemini 1.5 Pro, Gemini 1.5 Flash            | `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent` |
+| **DeepSeek** (via OpenRouter) | DeepSeek-R1 (free/pro), DeepSeek-Coder | `https://openrouter.ai/api/v1/chat/completions` |
+| **Mistral AI**| Mistral 7B, Mixtral 8x7B, Codestral         | `https://api.mistral.ai/v1/chat/completions` |
+| **Meta (LLaMA)** | LLaMA 3 (8B, 70B)                        | Hugging Face: `https://api-inference.huggingface.co/models/...` <br> or local via Ollama |
+| **Cohere**    | Command R+, Command R                       | `https://api.cohere.ai/v1/chat` |
+| **Hugging Face** | Phi-2, TinyLLaMA, Falcon, StableLM       | `https://api-inference.huggingface.co/models/{model}` |
+| **Ollama (local)** | LLaMA 3, Mistral, Phi-2, TinyLLaMA     | `http://localhost:11434/api/generate` |
+
+---
+
+👉 Notes:
+- Use **OpenRouter** if you want access to multiple providers/models through one API.
+- For local testing, **Ollama** is the easiest option (Mac/Linux/Windows).
+- Hugging Face offers free tiers for many models, but with rate limits.
+
+---
+
+## 🚀 Example: DeepSeek R1 (Free via OpenRouter)
+
+You can quickly test the plugin using the free DeepSeek R1 model on OpenRouter.
+
+### Settings
+- **Provider URL:** `https://openrouter.ai/api/v1/chat/completions`
+- **Model:** `deepseek/deepseek-r1:free`
+- **API Key:**
+  1. Create a free account on OpenRouter.
+  2. Go to **Dashboard → API Keys** and generate a key.
+  3. Paste the key in the plugin settings.
+- **Header example:** `Authorization: Bearer YOUR_API_KEY`
+
+### ✅ Result
+Once configured, the plugin will automatically reply to WooCommerce product reviews using **DeepSeek R1 (free)**.
+
+---
+
 ## 🚀 Usage
 
 - When a **customer leaves a review**, the plugin automatically generates a reply:
